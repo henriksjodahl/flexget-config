@@ -1,0 +1,293 @@
+# Inspiration:
+# https://github.com/blsmit5728/flexget_files/blob/master/config.yml
+# https://github.com/tarzasai/.flexget/blob/master/config.yml
+
+secrets: secrets.yml
+
+templates:
+  global:
+    domain_delay:
+      # RSS
+      bt-chat.com: 1 seconds
+      ezrss.it: 1 seconds
+      showrss.info: 1 seconds
+      torlock.eu: 1 seconds
+      torrenticity.com: 1 seconds
+      torrentz.eu: 1 seconds
+      torrentz.me: 1 seconds
+      kickasstorrents.eu: 1 seconds
+
+      # Discover
+      kat.ch: 1 seconds
+      torrentz.eu: 1 seconds
+      rarbg.to: 1 seconds
+
+
+    regexp:
+      reject:
+        - (s|d)ub(s|bed)?\b: {from: title}
+        - (duo|tri|quadri|tetra|penta|hexa|hepta|octa|ennea|deca)logy 
+        - \b3-?D\b: {from: title}
+        - \bR5\b: {from: title}
+        - \bWEBSCR\b: {from: title}
+        - \bscreener\b: {from: title}
+        - \bTS\b: {from: title}
+        - \bCam\b: {from: title}
+        - "{C_P}": {from: title}
+        - \bFRENCH\b: {from: title}
+        - \bSPANiSH\b: {from: title}
+        - \btrailer\b: {from: title}
+        - \bSCR\b: {from: title}
+        - TrTd TeaM: {from: title}
+        - \[TNTVillage\]: {from: title}
+        - \[facepalm\]: {from: title}
+        - \bHEVC\b: {from: title}
+    content_filter:
+      require:
+        - '*.avi'
+        - '*.mkv'
+        - '*.m4v'
+        - '*.mp4'
+#        - '*.rar'
+      reject:
+        - '*.m2ts'
+        - 'password.txt'
+        - '*.wmv'
+    retry_failed:
+      retry_time: 1 hour
+      retry_time_multiplier: 2
+      max_retries: 5
+
+  Series-Global:
+    exists_series:
+      - /mnt/nas/Video/Serier
+      - /mnt/nas/public/Downloads/incomplete/series
+    transmission:
+      host: localhost
+      port: 9091
+      username: '{{ secrets.transmission.username }}'
+      password: '{{ secrets.transmission.password }}'
+      magnetization_timeout: 30
+      main_file_only: yes
+      include_subs: yes
+      skip_files:
+        - '*.[sS]ample'
+    thetvdb_lookup: yes
+    trakt_lookup:
+      account: '{{ secrets.trakt.account }}'
+      username: '{{ secrets.trakt.username }}'
+    set:
+      content_filename: "{{ tvdb_series_name|default(series_name)|replace('/', '_')|replace(':', ' -')|replace(',', '') }} - {{ series_id }}{% if tvdb_ep_name|default(False) %} - {{ tvdb_ep_name|replace('/', '_')|replace(':', ' -')|replace(',', '') }}{% endif %} - {{ quality }}"
+      path: /mnt/nas/public/Downloads/incomplete/series
+    pushbullet:
+      apikey: '{{ secrets.pushbullet.APIkey }}'
+      title: "[FlexGet] {{ series_name }}"
+      body: "{{task}} - {{ series_id }}\nTorrent File: {{title}}"
+
+  Series-Feeds:
+    inputs:
+      # Kickass (Verified only, TV)
+      - rss:
+          url: https://kat.cr/usearch/verified%3A1%20category%3Atv/?rss=1
+          other_fields: ['torrent:magnetURI']
+          link: 'torrent:magnetURI'
+          silent: yes
+      # Kickass (ettv user only, TV)
+      - rss:
+          url: https://kat.cr/usearch/category%3Atv%20user%3Aettv/?rss=1
+          other_fields: ['torrent:magnetURI']
+          link: 'torrent:magnetURI'
+          silent: yes
+      # Kickass (r0b0T user only, TV)
+      - rss:
+          url: https://kat.cr/usearch/category%3Atv%20user%3Ar0b0T/?rss=1
+          other_fields: ['torrent:magnetURI']
+          link: 'torrent:magnetURI'
+          silent: yes
+      # Kickass (VTV user only, TV)
+      - rss:
+          url: https://kat.cr/usearch/category%3Atv%20user%3Avtv/?rss=1
+          other_fields: ['torrent:magnetURI']
+          link: 'torrent:magnetURI'
+          silent: yes
+      # Kickass (kikAssess user only, TV)
+      - rss:
+          url: https://kat.cr/usearch/category%3Atv%20user%3AkikAssess/?rss=1
+          other_fields: ['torrent:magnetURI']
+          link: 'torrent:magnetURI'
+          silent: yes
+      # Kickass (TvTeam user only, TV)
+      - rss:
+          url: https://kat.cr/usearch/category%3Atv%20user%3ATvTeam/?rss=1
+          other_fields: ['torrent:magnetURI']
+          link: 'torrent:magnetURI'
+          silent: yes
+      # torrentz and something else
+      - rss: { url: 'http://torrentz.eu/feed_verified?q=tv', silent: yes }
+      - rss: { url: 'http://torrentz.me/feed_verified?q=tv', silent: yes }
+      - rss: { url: 'http://www.torlock.com/television/rss.xml', silent: yes }
+      - rss: { url: 'http://showrss.info/feeds/all.rss', silent: yes }
+
+  Series-Discover:
+    discover:
+      what:
+        - emit_series: yes
+      from:
+        #- piratebay: 
+        #    category: tv
+        #    sort_by: seeds
+        - kat: 
+            category: tv
+            verified: yes
+        - torrentz: good
+#        - rarbg:
+#            category:
+#              - x264 720p
+#              - HDTV
+#            sort_by: seeders
+#            limit: 25
+#            use_tvdb: true
+
+  Sub-Move:
+    move:
+      along:
+        - srt
+        - en.srt
+        - eng.srt
+
+tasks:
+  Series-GetFollowing:
+    priority: 5
+    template:
+      - Series-Global
+      - Series-Discover
+#      - Series-Feeds
+    configure_series:
+      from:
+        trakt_list:
+          username: '{{ secrets.trakt.username }}'
+          account: '{{ secrets.trakt.account }}'
+          list: 'TV Following'
+          type: shows
+      settings:
+        target: 720p hdtv+
+        timeframe: 4 hours
+        quality: 480p-720p webrip+
+        propers: 12 hours
+    series:
+      - "Marvel's Agents of S.H.I.E.L.D.":
+          alternate_name:
+            -  "Marvels Agents of S.H.I.E.L.D."
+            -  "Marvel's Agents of SHIELD"
+            -  "Marvels Agents of SHIELD"
+      - "Once Upon a Time":
+          exact: yes
+          alternate_name:
+            - "Once Upon a Time (2011)"
+            - "Once Upon a Time 2011"
+      - "Heartland (2007) (CA)":
+          begin: S08E01
+          alternate_name:
+            - "Heartland (2007) (CA)"
+            - "Heartland (CA) (2007)"
+            - "Heartland (CA)"
+
+  Series-GetInteresting:
+    priority: 6
+    template:
+      - Series-Global
+      - Series-Discover
+    configure_series:
+      from:
+        trakt_list:
+          username: '{{ secrets.trakt.username }}'
+          account: '{{ secrets.trakt.account }}'
+          list: 'TV Interesting'
+          type: shows
+      settings:
+        target: 720p hdtv+
+        timeframe: 3 hours
+        quality: 480p-720p webrip+
+        propers: 12 hours
+
+  ClearTransmission:
+    priority: 7
+    no_entries_ok: yes
+    clean_transmission:
+      username: '{{ secrets.transmission.username }}'
+      password: '{{ secrets.transmission.password }}'
+      finished_for: 1 hours
+    disable: [details]
+
+  Sort-Series:
+    priority: 8
+    template:
+      - Sub-Move
+    filesystem: 
+      path: /mnt/nas/public/Downloads/incomplete/series/
+      regexp: '.*\.(avi|mkv|mp4)$'
+      recursive: yes
+    disable: seen
+    thetvdb_lookup: yes
+    trakt_lookup:
+      account: '{{ secrets.trakt.account }}'
+      username: '{{ secrets.trakt.username }}'
+    metainfo_series: yes
+    require_field:
+      - series_season
+      - series_episode
+    accept_all: yes
+    regexp:
+      reject:
+        - sample
+    move:
+      to: "/mnt/nas/Video/Serier/{{ series_name|replace('/', '_')|replace(':', ' ') }}/{% if series_id_type == 'ep' %}Season {{ trakt_season|default(series_season)|pad(2) }}/{% endif %}"
+      clean_source: 50
+    pushbullet:
+      apikey: '{{ secrets.pushbullet.APIkey }}'
+      title: "[FlexGet] {{ series_name }}"
+      body: "{{task}} - {{ series_id }}\nTorrent File: {{title}}"
+
+  Series-SetBegin:
+    priority: 9
+    configure_series:
+      from:
+        trakt_list:
+          username: '{{ secrets.trakt.username }}'
+          account: '{{ secrets.trakt.account }}'
+          list: 'TV Begin'
+          type: shows
+      settings:
+        begin: S01E01
+    trakt_list:
+      username: '{{ secrets.trakt.username }}'
+      account: '{{ secrets.trakt.account }}'
+      list: 'TV Begin'
+      type: shows
+    accept_all: yes
+    trakt_add:
+      username: '{{ secrets.trakt.username }}'
+      account: '{{ secrets.trakt.account }}'
+      list: 'TV Following'
+    trakt_remove:
+      username: '{{ secrets.trakt.username }}'
+      account: '{{ secrets.trakt.account }}'
+      list: 'TV Begin'
+    pushbullet:
+      apikey: '{{ secrets.pushbullet.APIkey }}'
+      title: "[FlexGet] {{ series_name }}"
+      body: "{{task}}"
+
+schedules:
+  - tasks: Series-Get*
+    interval:
+      minutes: 30
+  - tasks: Sort-Series
+    interval:
+      minutes: 15
+#  - tasks: ClearTransmission
+#    interval:
+#      hours: 2
+  - tasks: Series-SetBegin
+    interval:
+      days: 1
