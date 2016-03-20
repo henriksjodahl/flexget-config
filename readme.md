@@ -14,4 +14,9 @@ transmission:
   password: 
 pushbullet:
   APIkey: 
+path:
+  downloadMovies: 
+  downloadSeries: 
+  targetMovies: 
+  targetSeries: 
 ```
