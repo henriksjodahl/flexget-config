@@ -407,13 +407,10 @@ schedules:
   - tasks: Series-GetFollowing
     schedule:
       hour: 0-9/1
-  - tasks: Sort-*
+  - tasks: [ClearTransmission, Sort-*]
     schedule:
       hour: 0-9
       minute: "*/60"
-#  - tasks: ClearTransmission
-#    interval:
-#      hours: 2
   - tasks: Series-SetBegin
     interval:
       days: 1
