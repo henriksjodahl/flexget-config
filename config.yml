@@ -1,31 +1,26 @@
-# Inspiration:
-# https://github.com/blsmit5728/flexget_files/blob/master/config.yml
-# https://github.com/tarzasai/.flexget/blob/master/config.yml
+## Thank to https://github.com/tarzasai/.flexget/blob/master/config.yml
 
-secrets: secrets.yml
+# My passwords and other private stuff.
+variables: variables.yml
+
+web_server: 3539
 
 templates:
+
   global:
-    domain_delay:
-      # RSS
-      bt-chat.com: 1 seconds
-      ezrss.it: 1 seconds
-      showrss.info: 1 seconds
-      torlock.eu: 1 seconds
-      torrenticity.com: 1 seconds
-      torrentz.me: 1 seconds
-      kickasstorrents.eu: 1 seconds
-
-      # Discover
-      kat.ch: 5 seconds
-      torrentz.eu: 5 seconds
-      rarbg.to: 5 seconds
-
-
+    private_torrents: no
     regexp:
       reject:
-        - (s|d)ub(s|bed)?\b: {from: title}
-        - (duo|tri|quadri|tetra|penta|hexa|hepta|octa|ennea|deca)logy 
+        - \bemporada\b: {from: title}
+        - \bsubt\b: {from: title}
+        - (s|d)ub(s|bed|lado)?\b: {from: title}
+        - \bVHS: {from: title}
+        - \b3-?D\b: {from: title}
+        - \btrailer\b: {from: title}
+        - \bscreener\b: {from: title}
+        - \b(hd)?cam(rip)?\b: {from: title}
+        - \bdual\baudio\b: {from: title}
+        - r3mnants: {from: title}
         - \b3-?D\b: {from: title}
         - \bR5\b: {from: title}
         - \bWEBSCR\b: {from: title}
@@ -33,34 +28,140 @@ templates:
         - \bTS\b: {from: title}
         - \bCam\b: {from: title}
         - "{C_P}": {from: title}
-        - \bFRENCH\b: {from: title}
-        - \bSPANiSH\b: {from: title}
-        - \btrailer\b: {from: title}
         - \bSCR\b: {from: title}
         - TrTd TeaM: {from: title}
         - \[TNTVillage\]: {from: title}
         - \[facepalm\]: {from: title}
         - \bHEVC\b: {from: title}
+        - (duo|tri|quadri|tetra|penta|hexa|hepta|octa|ennea|deca)logy
+        - italian
+        - french
+        - spanish
+        - german
+        - dutch
+        - hindi
+        - ipod
+        - russian
     content_filter:
       require:
         - '*.avi'
         - '*.mkv'
-        - '*.m4v'
+        - '*.mpg'
         - '*.mp4'
       reject:
-        - '*.m2ts'
         - 'password.txt'
         - '*.wmv'
+        # - '*.r01'
+      require_mainfile: yes
+    verify_ssl_certificates: no
+    domain_delay:
+      bt-chat.com: 1 seconds
+      ezrss.it: 1 seconds
+      showrss.info: 1 seconds
+      torlock.eu: 1 seconds
+      torrenticity.com: 1 seconds
+      rarbg.to: 5 seconds
+      thepiratebay.se: 5 seconds
+      thepiratebay.org: 5 seconds
+    # torrentz' guys banned flexget users
+    headers:
+      User-Agent: "Mozilla/5.0 (Windows NT 5.1; rv:16.0) Gecko/20100101 Firefox/16.0"
     retry_failed:
       retry_time: 1 hour
       retry_time_multiplier: 2
-      max_retries: 5
+      max_retries: 3
+    # Prevent some messages to be logged - see https://github.com/tarzasai/.flexget/tree/master/plugins
+    log_filter:
+      content_size:
+        - too big, rejecting
+        - too small, rejecting
+      crossmatch:
+        - filesystem did not return anything
+      guessit.guess:
+        - duplicate properties
+        - both guesses to be merged
+      manager:
+        - Writing crash report to
+      move:
+        - left because it exceeds safety value
+        - does not exists (anymore)
+      parser_internal:
+        - appears to be an episode pack
+      requests.packages.urllib3.connectionpool:
+        - error(10060
+        - feed
+        - torlock
+        - getaddrinfo failed
+        - ReadTimeoutError
+        - after connection broken
+      series:
+        - releasing quality restriction
+        - appears to be an episode pack
+      task:
+        - Plugin content_size has requested task to be ran again
+        - Rerunning the task in case better resolution
+        - Unhandled error in plugin from_transmission
+        - Unhandled error in plugin clean_transmission
+      urlrewriter:
+        - URL rewritten to
 
-  Series-Global:
-    exists_series:
-      - '{{ secrets.path.targetSeries }}'
-      - '{{ secrets.path.downloadSeries }}'
+  tvtrakt_manipulate:
+    manipulate:
+      # extract year with paranteses from within entry title (not in the end) (i.e. (2007) in 'Heartland (2007) (CA)')
+      - title:
+          extract: '(.*) \(\d{4}\) (\(.*\))'
 
+  # The sources for series torrents.
+  tvfeed:
+    inputs:
+      - rss:
+          # ### check domain at https://eztvstatus.com/ ###
+          url: https://eztv.ag/ezrss.xml
+          other_fields: ['torrent:magnetURI']
+          link: 'torrent:magnetURI'
+          silent: yes
+      - rss:
+          # url: http://extratorrent.cc/rss.xml?cid=8&type=popular
+          url: http://extratorrent.cc/rss.xml?cid=8&type=last
+          silent: yes
+      - rss:
+          # url: http://extratorrent.cc/rss.xml?cid=113&type=popular
+          url: http://extratorrent.cc/rss.xml?cid=113&type=last
+          silent: yes
+      - rss:
+          url: http://www.torrentfunk.com/tv/rss.xml
+          silent: yes
+    log_filter:
+      inputs:
+        - Error during input plugin rss
+
+  # The source for series torrents
+  tvdiscover:
+    discover:
+      limit: 10 
+      what:
+        - next_series_episodes: yes
+      from:
+        - rarbg:
+            category: [18,41]
+            sorted_by: seeders
+            limit: 25
+            use_tvdb: true
+        - piratebay:
+            category: video
+      release_estimations: loose
+      interval: 1 hour
+    log_filter:
+      task:
+        -  Plugin next_series_episodes has requested
+
+  # All the metainfo plugins used by tasks handling series.
+  tvinfo:
+    plugin_priority:
+      # manipulate must fix the titles before metainfo_series.
+      manipulate: 255
+    metainfo_series: yes
+    thetvdb_lookup: yes
     # Some titles need little corrections to find matches on metainfo sites.
     manipulate:
       - title:
@@ -75,345 +176,526 @@ templates:
           replace:
             regexp: '^\([^\]]*\)[^a-z0-9]*'
             format: ''
+      - title:
+          replace:
+            regexp: '\s?\]\[\s?'
+            format: '@@'
+      - title:
+          replace:
+            regexp: '\W?@@.*'
+            format: ''
+      - title:
+          replace:
+            regexp: "'"
+            format: ''
+      - title:
+          replace:
+            regexp: 'From \[ WWW.TORRENTING.COM \] - '
+            format: ''
       # Original title backup
       - tvinfo_title:
           from: title
-      # Now the modifications
-      - title:
-          replace:
-            regexp: '.*(marvel|marvels|marvel.s)?.agents.of.(s.h.i.e.l.d.|shield)[\b-.]*'
-            format: 'marvels_agents_of_shield.'
-      - title:
-          replace:
-            regexp: '^[^a-z0-9]*heartland.(ca|\(ca\))?[^a-z0-9]*'
-            format: 'Heartland.(CA).'
+    log_filter:
+      api_tvdb:
+        - using cached data
+#        - not get update information from
+      manipulate:
+        - tvinfo_title
+#      parser_internal:
+#        - cannot find a(n) `ep` style identifier
+#        - cannot find any series numbering
 
-    transmission:
-      host: localhost
-      port: 9091
-      username: '{{ secrets.transmission.username }}'
-      password: '{{ secrets.transmission.password }}'
-      magnetization_timeout: 30
-      main_file_only: yes
-      include_subs: yes
-      skip_files:
-        - '*.[sS]ample'
-    thetvdb_lookup: yes
-    set:
-      content_filename: "{{ tvdb_series_name|default(series_name)|replace('/', '_')|replace(':', ' -')|replace(',', '') }} - {{ series_id }}{% if tvdb_ep_name|default(False) %} - {{ tvdb_ep_name|replace('/', '_')|replace(':', ' -')|replace(',', '') }}{% endif %} - {{ quality }}"
-      path: '{{ secrets.path.downloadSeries }}'
-    pushbullet:
-      apikey: '{{ secrets.pushbullet.APIkey }}'
-      title: "[FlexGet] {{ series_name }}"
-      body: "{{task}} - {{ series_id }}\nFile: {{title}}"
-
-  Series-Feeds:
-    inputs:
-      # Kickass (Verified only, TV)
-      - rss:
-          url: https://kat.cr/usearch/verified%3A1%20category%3Atv/?rss=1
-          other_fields: ['torrent:magnetURI']
-          link: 'torrent:magnetURI'
-          silent: yes
-      # Kickass (ettv user only, TV)
-      - rss:
-          url: https://kat.cr/usearch/category%3Atv%20user%3Aettv/?rss=1
-          other_fields: ['torrent:magnetURI']
-          link: 'torrent:magnetURI'
-          silent: yes
-      # Kickass (r0b0T user only, TV)
-      - rss:
-          url: https://kat.cr/usearch/category%3Atv%20user%3Ar0b0T/?rss=1
-          other_fields: ['torrent:magnetURI']
-          link: 'torrent:magnetURI'
-          silent: yes
-      # Kickass (VTV user only, TV)
-      - rss:
-          url: https://kat.cr/usearch/category%3Atv%20user%3Avtv/?rss=1
-          other_fields: ['torrent:magnetURI']
-          link: 'torrent:magnetURI'
-          silent: yes
-      # Kickass (kikAssess user only, TV)
-      - rss:
-          url: https://kat.cr/usearch/category%3Atv%20user%3AkikAssess/?rss=1
-          other_fields: ['torrent:magnetURI']
-          link: 'torrent:magnetURI'
-          silent: yes
-      # Kickass (TvTeam user only, TV)
-      - rss:
-          url: https://kat.cr/usearch/category%3Atv%20user%3ATvTeam/?rss=1
-          other_fields: ['torrent:magnetURI']
-          link: 'torrent:magnetURI'
-          silent: yes
-      # torrentz and something else
-      - rss: { url: 'http://torrentz.eu/feed_verified?q=tv', silent: yes }
-      - rss: { url: 'http://torrentz.me/feed_verified?q=tv', silent: yes }
-      - rss: { url: 'http://www.torlock.com/television/rss.xml', silent: yes }
-      - rss: { url: 'http://showrss.info/feeds/all.rss', silent: yes }
-
-  Series-Discover:
-    discover:
-      what:
-        - emit_series: yes
-      from:
-        - kat: 
-            category: tv
-            verified: yes
-        - torrentz: good
-#        - rarbg:
-#            category:
-#              - x264 720p
-#              - HDTV
-#            sort_by: seeders
-#            limit: 25
-#            use_tvdb: true
-
-  Movies-Global:
-    exists_movie:
-      - '{{ secrets.path.targetMovies }}'
-      - '{{ secrets.path.downloadMovies }}'
+  # Global filters for series.
+  tvfltr:
     content_size:
       max: 1700
-      min: 750
-    imdb_lookup: yes
+#      min: 750
+    # quality: in the task itself
+    set:
+      allow_teasers: no
+      propers: 12 hours
+      specials: no
+      tracking: backfill
+    log_filter:
+      series:
+        - identified_by has locked
+      remember_rej:
+        - Remembering rejection of
+      remember_rejected:
+        - Remembering rejection of
+
+  # Destination path for series in Transmission (requires "transm" template too).
+  tvtran:
     transmission:
-      host: localhost
+      path: /mnt/nas/public/Downloads/series
+
+  # The sources for movies torrents.
+  mvfeed:
+    inputs:
+      - rss: { url: 'http://www.torlock.com/movies/rss.xml', silent: yes }
+      - rss: { url: 'http://extratorrent.cc/rss.xml?type=popular&cid=4', silent: yes }
+    log_filter:
+      inputs:
+        - Unable to download the RSS for task
+        - invalid RSS content
+        - rss did not return
+      rss:
+        - I have saved the invalid content
+        - like error page
+        - login page
+
+  # The sources for movies torrents.s
+  mvdiscover:
+    discover:
+      limit: 10
+      what:
+        - movie_list: moviequeue
+      from:
+        - piratebay:
+            category: video
+      interval: 1 day
+    log_filter:
+      imdb_lookup:
+        - Searching from imdb
+        - Parsing imdb for
+
+
+  # All the metainfo plugins used by tasks handling movies.
+  mvinfo:
+    # plugin_priority:
+      # I'm not sure of these priorities too, maybe because of https://github.com/Flexget/Flexget/pull/234 (fixed).
+      # tmdb_lookup: 128
+    log_filter:
+      imdb_lookup:
+        - lookup failed
+      tmdb_lookup:
+        - lookup failed
+    imdb_lookup: yes
+    # tmdb_lookup: yes
+
+  # Global filters for movies.
+  mvfltr:
+    content_size:
+      min: 800
+      max: 15000
+    quality: 720p hdtv+ h264+ dd5.1+
+    if:
+      - not (imdb_id and imdb_name and imdb_year): reject
+
+  # Destination path for movies in Transmission (requires transm template too).
+  mvtran:
+    transmission:
+      path: /mnt/nas/public/Downloads/movies
+
+  # Common Transmission settings.
+  transm:
+    transmission:
+      enabled: yes
       port: 9091
-      username: '{{ secrets.transmission.username }}'
-      password: '{{ secrets.transmission.password }}'
-      magnetization_timeout: 30
+      username: '{? transmission.username ?}'
+      password: '{? transmission.password ?}'
+      ratio: -1
+      magnetization_timeout: 90
       main_file_only: yes
       include_subs: yes
       skip_files:
         - '*.[sS]ample'
-    set:
-      path: '{{ secrets.path.downloadMovies }}'
-    pushbullet:
-      apikey: '{{ secrets.pushbullet.APIkey }}'
-      title: "[FlexGet] {{ imdb_name }} {{ imdb_year }}"
-      body: "{{task}}\nFile: {{title}}"
-      url: "imdb:///title/{{ imdb_id }}?src=mdot"
+    log_filter:
+      transmissionrpc:
+        - Expecting
+        - Request
+        - HTTP data
 
-  Movies-Discover:
-    discover:
-      what:
-        - emit_movie_queue: yes
-      from:
-        - kat:
-            category: movies
-            verified: yes
-
-  Movies-Queued:
-    movie_queue: accept
-    template: Movies-Discover
-    disable:
-      - seen_movies
-#    discover:
-#      what:
-#        - emit_movie_queue: yes
-#      from:
-#        - filler: yes
-    trakt_remove:
-      username: '{{ secrets.trakt.username }}'
-      account: '{{ secrets.trakt.account }}'
-      list: Movie Queue
-    trakt_add:
-      username: '{{ secrets.trakt.username }}'
-      account: '{{ secrets.trakt.account }}'
-      list: watchlist
-
-  Sub-Move:
+  # Subtitles should always follow their video.
+  movsrt:
     move:
       along:
-        - srt
-        - en.srt
-        - eng.srt
+        extensions:
+          - srt
+          - en.srt
+          - eng.srt
+  copsrt:
+    copy:
+      along:
+        extensions:
+          - srt
+          - en.srt
+          - eng.srt
+  delsrt:
+    delete:
+      clean_source: 50
+      along:
+        extensions:
+          - srt
+          - en.srt
+          - eng.srt
+
+  # No messages about no input/output/whatever.
+  nosumm:
+    disable:
+      - details
+
+  # Several tasks must not mess up with the seen table...
+  noseen:
+    disable:
+      - seen
+      - seen_info_hash
+      - seen_movies
+
+  # ...and/or with the backlog.
+  nofail:
+    disable:
+      - backlog
+      - remember_rejected
+      - retry_failed
 
 tasks:
-  Series-GetFollowing:
-    priority: 5
+
+  # Set begin to new series to episode existing in Trakt watchlist
+  tvtrakt_begin:
     template:
-      - Series-Global
-      - Series-Discover
-#      - Series-Feeds
-    configure_series:
-      from:
-        trakt_list:
-          username: '{{ secrets.trakt.username }}'
-          account: '{{ secrets.trakt.account }}'
+      - no_global
+      - noseen
+      - nosumm
+      - tvtrakt_manipulate
+    trakt_list:
+      username: '{? trakt.username ?}'
+      account: '{? trakt.account ?}'
+      list: 'TV Following' 
+      type: episodes
+    accept_all: yes
+    set_series_begin: yes
+    list_remove:
+      - trakt_list:
+          username: '{? trakt.username ?}'
+          account: '{? trakt.account ?}'
+          list: 'TV Following'
+    list_add:
+      - trakt_list:
+          username: '{? trakt.username ?}'
+          account: '{? trakt.account ?}'
           list: 'TV Following'
           type: shows
+    notify:
+      entries:
+        via:
+          - pushbullet:
+              api_key: '{? pushbullet.api_key ?}'
+        what: accepted
+        title: '[FlexGet] Follow {{tvdb_series_name|d(series_name)}} - {{series_id}}'
+        
+
+  # Copy shows from Trakt watchlist to Flexget series list.
+  ## TODO: Remove shows from entity_list that no longer exist in Trakt list
+  tvtrakt_sync:
+    priority: 2
+    template:
+      - no_global
+      - nofail
+      - tvtrakt_manipulate
+    seen: local
+    trakt_list:
+      username: '{? trakt.username ?}'
+      account: '{? trakt.account ?}'
+      list: 'TV Following'
+      type: shows
+    accept_all: yes
+    set_series_begin: yes
+    list_add:
+      - entry_list: series
+    log_filter:
+      task:
+        - REJECTED
+    
+
+  # This is the download task for series.
+  get_series:
+    priority: 3 
+    template:
+      - tvinfo
+#      - tvfeed
+      - tvdiscover
+      - tvfltr
+      - tvtran
+      - transm
+    seen: local
+    configure_series:
       settings:
+        tracking: backfill
         target: 720p hdtv+
         timeframe: 4 hours
         quality: 480p-720p webrip+
-        propers: 12 hours
-    series:
-#      - "Marvel's Agents of S.H.I.E.L.D.":
-#          alternate_name:
-#            -  "Marvels Agents of S.H.I.E.L.D."
-#            -  "Marvel's Agents of SHIELD"
-#            -  "Marvels Agents of SHIELD"
-#      - "Once Upon a Time":
-#          exact: yes
-#          alternate_name:
-#            - "Once Upon a Time (2011)"
-#            - "Once Upon a Time 2011"
-      - "Heartland (2007) (CA) (2007)":
-          begin: S08E01
-          alternate_name:
-            - "Heartland (2007) (CA)"
-            - "Heartland (CA) (2007)"
-            - "Heartland (CA)"
-
-  Series-GetInteresting:
-    priority: 6
-    template:
-      - Series-Global
-      - Series-Discover
-    configure_series:
+        propers: 24 hours
       from:
-        trakt_list:
-          username: '{{ secrets.trakt.username }}'
-          account: '{{ secrets.trakt.account }}'
-          list: 'TV Interesting'
-          type: shows
-      settings:
-        target: 720p hdtv+
-        timeframe: 3 hours
-        quality: 480p-720p webrip+
-        propers: 12 hours
+        entry_list: series
+    transmission:
+      bandwidthpriority: 1
+    notify:
+      entries:
+        via:
+          - pushbullet:
+              api_key: '{? pushbullet.api_key ?}'
+        what: accepted
+        title: >
+          [FlexGet] 
+          {{tvdb_series_name|d(series_name)}} - {{series_id}}
+        message: >
+          {{ task }}
+          {{tvdb_series_name|d(series_name)}} - {{series_id}} - {{tvdb_ep_name|d('')}}{% if quality is defined %} ({{quality}})
+          {{title}}
 
-  ClearTransmission:
-    priority: 7
-    no_entries_ok: yes
-    clean_transmission:
-      username: '{{ secrets.transmission.username }}'
-      password: '{{ secrets.transmission.password }}'
-      enabled: yes
-    disable: [details]
-
-  Sort-Series:
-    priority: 8
-    template:
-      - Sub-Move
-    filesystem: 
-      path: '{{ secrets.path.downloadSeries }}/'
-      regexp: '.*\.(avi|mkv|mp4)$'
-      recursive: yes
-    disable: seen
-    thetvdb_lookup: yes
-    metainfo_series: yes
-    require_field:
-      - series_season
-      - series_episode
-    accept_all: yes
-    regexp:
-      reject:
-        - sample
-    move:
-      to: "/mnt/nas/Video/Serier/{{ tvdb_series_name|default(series_name)|replace('/', '_')|replace(':', ' ') }}/{% if series_id_type == 'ep' %}Season {{ tvdb_season|default(series_season)|pad(2) }}/{% endif %}"
-      clean_source: 50
-    pushbullet:
-      apikey: '{{ secrets.pushbullet.APIkey }}'
-      title: "[FlexGet] {{ series_name }}"
-      body: "{{task}} - {{ series_id }}\nFile: {{title}}"
-
-  Series-SetBegin:
-    priority: 9
-    configure_series:
-      from:
-        trakt_list:
-          username: '{{ secrets.trakt.username }}'
-          account: '{{ secrets.trakt.account }}'
-          list: 'TV Begin'
-          type: shows
-      settings:
-        begin: S01E01
-    trakt_list:
-      username: '{{ secrets.trakt.username }}'
-      account: '{{ secrets.trakt.account }}'
-      list: 'TV Begin'
-      type: shows
-    accept_all: yes
-    trakt_add:
-      username: '{{ secrets.trakt.username }}'
-      account: '{{ secrets.trakt.account }}'
-      list: 'TV Following'
-    trakt_remove:
-      username: '{{ secrets.trakt.username }}'
-      account: '{{ secrets.trakt.account }}'
-      list: 'TV Begin'
-    pushbullet:
-      apikey: '{{ secrets.pushbullet.APIkey }}'
-      title: "[FlexGet] {{ series_name }}"
-      body: "{{task}}"
-
-  Movies-SetQueue:
+  # Copy movies from Trakt watchlist to Flexget movie queue.
+  mvtrakt_sync:
     priority: 10
-    template: no_global
+    template:
+      - nofail
+    seen: local
     trakt_list:
-      username: '{{ secrets.trakt.username }}'
-      account: '{{ secrets.trakt.account }}'
-      list: Movie Queue
+      username: '{? trakt.username ?}'
+      account: '{? trakt.account ?}'
+      list: 'Movie Queue'
       type: movies
     accept_all: yes
-    movie_queue: add
+    list_add:
+      - movie_list: moviequeue
+    notify:
+      entries:
+        via:
+          - pushbullet:
+              api_key: '{? pushbullet.api_key ?}'
+        what: accepted
+        title: >
+          [FlexGet] 
+          {{trakt_name}} ({{trakt_year}})
+        message: >
+          {{ task }}
+          {{title}}
 
-  Movies-Get720p:
-    priority: 11
-    template: 
-      - Movies-Global
-      - Movies-Queued
-    torrent_alive:
-      min_seeds: 5
-    quality: 720p bluray+ h264+ !mp3 !aac
-
-  Movies-Get:
-    priority: 12
-    template: 
-      - Movies-Global
-      - Movies-Queued
-    torrent_alive:
-      min_seeds: 2
-    quality: 480p-720p webrip+ !sdtv !dvdscr !bdscr
-    delay: 7 days
-
-  Sort-Movies:
-    priority: 13
+  # This is the search & download task for movies.
+  get_movies:
+    priority: 15
     template:
-      - Sub-Move
-    filesystem: 
-      path: '{{ secrets.path.downloadMovies }}/'
-      regexp: '.*\.(avi|mkv|mp4)$'
-      recursive: yes
-    disable: seen
-    tmdb_lookup: yes
-    imdb_lookup: yes
-    accept_all: yes
-    regexp:
-      reject:
-        - sample
+      - mvinfo
+#      - mvfeed
+      - mvdiscover
+      - mvfltr
+      - mvtran
+      - transm
+    seen: local
+    list_match:
+      from:
+        - movie_list: moviequeue
+    transmission:
+      bandwidthpriority: 0
+    notify:
+      entries:
+        via:
+          - pushbullet:
+              api_key: '{? pushbullet.api_key ?}'
+        what: accepted
+        title: >
+          [FlexGet] 
+          {{imdb_name}} ({{imdb_year}})
+        message: >
+          {{ task }}
+          {{imdb_name}} ({{imdb_year}}){% if quality is defined %} ({{quality}}){% endif %}
+          {{title}}
+
+  # Move episodes from Transmission destination folder to the series folder.
+  move_series:
+    priority: 40
+    template:
+      - no_global
+      - noseen
+      - nosumm
+      - nofail
+      - tvinfo
+      - movsrt
+    log_filter:
+      crossmatch:
+        - did not return anything
+    require_field:
+      - location
+    # We get the entries from Transmission because we need the torrent title, because in some multi-file torrents the
+    # actual video filename is completely different, up to make the lookup on metainfo sites impossible.
+    from_transmission:
+      enabled: yes
+      port: 9091
+      username: '{? transmission.username ?}'
+      password: '{? transmission.password ?}'
+      onlycomplete: no
+    # Accept only files in series' Transmission destination path (tasks get_series, premieres, dropox_series).
+    crossmatch:
+      from:
+        - filesystem:
+            path:
+              - /mnt/nas/public/Downloads/series/
+            regexp: '.*\.(avi|mkv|mp4)$'
+            recursive: yes
+      fields:
+        - location
+      action: accept
+    exists_series:
+      path: "/mnt/nas/video/Serier/"
+      allow_different_qualities: better
+    # Copy accepted files in the incoming path (filename will be the original title since manipulate in tvinfo might
+    # have modified it).
     move:
-      to: '/mnt/nas/Video/Film/{{ tmdb_name|replace("/", "_")|replace(":", " ") }} ({{ tmdb_year }})'
-      clean_source: 50
-    pushbullet:
-      apikey: '{{ secrets.pushbullet.APIkey }}'
-      title: "[FlexGet] {{ imdb_name }} {{ imdb_year }}"
-      body: "{{task}}\nFile: {{title}}"
-      url: "imdb:///title/{{ imdb_id }}?src=mdot"
+      to: "/mnt/nas/video/Serier/{{ tvdb_series_name|default(series_name) }}/{% if series_id_type == 'ep' %}Season {{ tvdb_season|default(series_season)|pad(2) }}/{% endif %}"
+      rename: "{{ tvinfo_title }}{% if not location|pathext in tvinfo_title %}{{ location|pathext }}{% endif %}"
+    notify:
+      entries:
+        via:
+          - pushbullet:
+              api_key: '{? pushbullet.api_key ?}'
+        what: rejected
+        title: '[FlexGet] REJECTED {{ task }}'
+        message: '{{title}}'
+
+  # Move movies from Transmission destination folder to the incoming folder.
+  move_movies:
+    priority: 41
+    template:
+      - no_global
+      - noseen
+      - nosumm
+      - nofail
+      - mvinfo
+      - movsrt
+    log_filter:
+      crossmatch:
+        - did not return anything
+    require_field:
+      - location
+    # We get the entries from Transmission because we need the torrent title, because in some multi-file torrents the
+    # actual video filename is completely different, up to make the lookup on metainfo sites impossible.
+    from_transmission:
+      enabled: yes
+      port: 9091
+      username: '{? transmission.username ?}'
+      password: '{? transmission.password ?}'
+      onlycomplete: no
+    # Accept only files in movies' Transmission destination path (tasks get_movies, dropox_movies).
+    crossmatch:
+      from:
+        - filesystem:
+            path:
+              - /mnt/nas/public/Downloads/movies/
+            regexp: '.*\.(avi|mkv|mp4)$'
+            recursive: yes
+      fields:
+        - location
+      action: accept
+    # Copy accepted files in the incoming path (filename will be the original torrent name, see move_series).
+    move:
+      to: '/mnt/nas/video/Film/{{ imdb_name|replace("/", "_")|replace(":", " -") }} ({{ imdb_year }})'
+      rename: "{{ title }}{% if not location|pathext in title %}{{ location|pathext }}{% endif %}"
+    notify:
+      entries:
+        via:
+          - pushbullet:
+              api_key: '{? pushbullet.api_key ?}'
+        what: rejected
+        title: '[FlexGet] REJECTED {{ task }}'
+        message: '{{title}}'
+
+
+  # Clean Transmission of completed torrents.
+  cleantran:
+    priority: 45
+    template:
+      - noseen
+      - nosumm
+      - nofail
+    log_filter:
+      transmissionrpc:
+        - Expecting
+        - Request
+        - HTTP data
+      task:
+        - you should add (at least) one!
+    clean_transmission:
+      enabled: yes
+      port: 9091
+      username: '{? transmission.username ?}'
+      password: '{? transmission.password ?}'
+      finished_for: 48 hours
+      delete_files: yes
+
+  # Delete watched movies.
+  purge_movies:
+    priority: 52
+    template:
+      - no_global
+      - noseen
+      - nosumm
+      - mvinfo
+      - delsrt
+    log_filter:
+      delete:
+        - has been deleted as well
+        - left because it exceeds safety value
+        - was less than clean_source safe value
+    filesystem:
+      path:
+        - /mnt/nas/video/Film/
+      recursive: no
+      retrieve: dirs
+    trakt_lookup:
+      username: '{? trakt.username ?}'
+      account: '{? trakt.account ?}'
+    if:
+      - trakt_watched: accept
+    list_remove:
+      - trakt_list:
+          username: '{? trakt.username ?}'
+          account: '{? trakt.account ?}'
+          list: 'collection'
+    # Eventually restore the movie folder (otherwise Flexget will not run next time)
+    exec:
+      allow_background: yes
+      on_exit:
+        phase: md /mnt/nas/video/Film/
+
+
+  ######################################################################################################################
+  # MANUALS
+  ######################################################################################################################
+
+  # Re-Set begin to next not collected episode
+  tvtrakt_reset:
+    manual: yes
+    template:
+      - no_global
+      - noseen
+      - nosumm
+      - tvtrakt_manipulate
+    next_trakt_episodes:
+      username: '{? trakt.username ?}'
+      account: '{? trakt.account ?}'
+      context: collected
+      list: 'TV Following'
+    accept_all: yes
+    set_series_begin: yes
+
+
 
 schedules:
-  - tasks: Series-GetFollowing
+  - tasks: get_series
     schedule:
-      hour: 0-9/1
-  - tasks: [ClearTransmission, Sort-*]
-    schedule:
-      hour: 0-9
-      minute: "*/60"
-  - tasks: Series-SetBegin
+      hour: 0-17/1
+  - tasks: [mvtrakt_sync, get_movies]
     interval:
       days: 1
-  - tasks: Movies-*
+  - tasks: move_*
+    interval:
+      hours: 1
+  - tasks: cleantran
+    interval:
+      days: 1
+  - tasks: purge_movies
+    interval:
+      days: 7
+  - tasks: [tvtrakt_begin, tvtrakt_sync]
     interval:
       days: 1
